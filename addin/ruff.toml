@@ -1,0 +1,10 @@
+# The rule set is stated explicitly so that a ruff upgrade can't change what is
+# enforced without a deliberate edit here. BLE001 and S110
+# stay off: guarding Fusion API access with `except Exception` is deliberate,
+# because a handler that raises can deactivate the add-in.
+
+target-version = "py311"
+line-length = 120
+
+[lint]
+select = ["E4", "E7", "E9", "F"]

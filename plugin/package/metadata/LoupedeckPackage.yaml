@@ -1,0 +1,17 @@
+type: plugin4
+name: FusionKeypad
+displayName: Fusion Keypad
+description: Keys for Autodesk Fusion that follow what you are doing. Needs the Fusion Keypad add-in running in Fusion.
+version: 0.1.0
+author: Craig Ulliott
+minimumLoupedeckVersion: 6.1
+
+pluginType: remote
+pluginRuntime: nodejs
+entryPoint: index.mjs
+pluginFolderMac: .
+
+supportedDevices:
+    - MxCreativeKeypad
+
+pluginCapabilities:

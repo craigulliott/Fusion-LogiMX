@@ -1,0 +1,14 @@
+node_modules/
+plugin/dist/
+*.lplug4
+
+# Python
+__pycache__/
+*.pyc
+.ruff_cache/
+
+# macOS
+.DS_Store
+
+# IDE (Fusion writes .vscode/launch.json into an add-in's folder when it is edited or debugged)
+.vscode/

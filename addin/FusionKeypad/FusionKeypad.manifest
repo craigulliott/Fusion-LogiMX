@@ -1,0 +1,13 @@
+{
+    "autodeskProduct": "Fusion360",
+    "type": "addin",
+    "id": "d2584e98-58cc-4872-a336-b999a7da1bd5",
+    "author": "Craig Ulliott",
+    "description": {
+        "": "Drives the Logitech MX Keypad from Fusion: the keys follow what you are doing and start Fusion's own tools."
+    },
+    "version": "0.1.0",
+    "runOnStartup": false,
+    "supportedOS": "windows|mac",
+    "editEnabled": true
+}
