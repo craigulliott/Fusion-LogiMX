@@ -4,7 +4,7 @@ import unittest
 
 import _bootstrap  # noqa: F401
 
-from lib.registry import Context, FusionState, Registry, Root, Tool
+from FusionKeypad.lib.registry import Context, FusionState, Registry, Root, Tool
 
 
 def _definition():

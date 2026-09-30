@@ -4,9 +4,9 @@ import unittest
 
 import _bootstrap  # noqa: F401
 
-from lib import contexts
-from lib.navigator import Nav, Navigator
-from lib.registry import Context, FusionState, Registry, Root, Tool
+from FusionKeypad.lib import contexts
+from FusionKeypad.lib.navigator import Nav, Navigator
+from FusionKeypad.lib.registry import Context, FusionState, Registry, Root, Tool
 
 SKETCHING = FusionState("FusionSolidEnvironment", editing_sketch=True)
 DESIGNING = FusionState("FusionSolidEnvironment", editing_sketch=False)

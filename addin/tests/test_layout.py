@@ -4,9 +4,9 @@ import unittest
 
 import _bootstrap  # noqa: F401
 
-from lib.layout import Face, faces
-from lib.navigator import Nav
-from lib.registry import Context, Registry, Root, Tool
+from FusionKeypad.lib.layout import Face, faces
+from FusionKeypad.lib.navigator import Nav
+from FusionKeypad.lib.registry import Context, Registry, Root, Tool
 
 LINE = Tool("L", "Line")
 MARKED = Tool("M", "Mark", icon="mark.png")

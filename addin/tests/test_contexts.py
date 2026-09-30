@@ -4,8 +4,8 @@ import unittest
 
 import _bootstrap  # noqa: F401
 
-from lib import contexts
-from lib.registry import FusionState, Registry
+from FusionKeypad.lib import contexts
+from FusionKeypad.lib.registry import FusionState, Registry
 
 
 class DefinitionTest(unittest.TestCase):

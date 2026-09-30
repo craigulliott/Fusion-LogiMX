@@ -8,8 +8,8 @@ import unittest
 import _bootstrap  # noqa: F401
 
 import adsk.core
-from lib import events
-from lib.link import CONNECTED, HOST, Link
+from FusionKeypad.lib import events
+from FusionKeypad.lib.link import CONNECTED, HOST, Link
 
 TEST_PORT = 47899  # not the real port, so an add-in running in Fusion can't interfere
 PRESS = {"type": "press", "slot": 2, "layout": 1}

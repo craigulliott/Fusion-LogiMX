@@ -24,6 +24,10 @@ docs/protocol.md for the message format between the two halves.
 
 - **Python:**
   - a thin entry file, logic in `lib/`;
+  - imports within the add-in are relative (`from .lib import …`), and nothing touches
+    `sys.path`. Fusion loads the add-in folder as a package and runs every add-in in one
+    interpreter, so an absolute `from lib import …` picks up whichever add-in's `lib` loaded
+    first. `tests/test_entry.py` guards this;
   - every Fusion accessor guarded, and handler exceptions logged, never raised;
   - standard library only, `.py` source only;
   - ruff with the explicit E4/E7/E9/F set;
