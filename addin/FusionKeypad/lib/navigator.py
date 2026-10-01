@@ -93,7 +93,7 @@ class Navigator:
 
     def command_started(self, command: str) -> None:
         """Rule 2. Commands without a key (orbit, OK, Select, …) are ignored."""
-        home = self._registry.home(command)
+        home = self._registry.home(command, self._fusion)
         if home is None:
             return
         self.running = command
@@ -109,7 +109,7 @@ class Navigator:
 
     def shape_drawn(self) -> None:
         """Rule 5."""
-        home = self._registry.home(self.running) if self.running else None
+        home = self._registry.home(self.running, self._fusion) if self.running else None
         if home is not None and home.default is not None and self.context is home:
             self._show(self._registry.parent(home), holding=home)
 

@@ -8,9 +8,10 @@ from FusionKeypad.lib import contexts
 from FusionKeypad.lib.navigator import Nav, Navigator
 from FusionKeypad.lib.registry import Context, FusionState, Registry, Root, Tool
 
-SKETCHING = FusionState("FusionSolidEnvironment", editing_sketch=True)
-DESIGNING = FusionState("FusionSolidEnvironment", editing_sketch=False)
-RENDERING = FusionState("FusionRenderEnvironment", editing_sketch=False)
+SKETCHING = FusionState("FusionSolidEnvironment", editing_sketch=True, assembly=False)
+DESIGNING = FusionState("FusionSolidEnvironment", editing_sketch=False, assembly=False)
+ASSEMBLING = FusionState("FusionSolidEnvironment", editing_sketch=False, assembly=True)
+RENDERING = FusionState("FusionRenderEnvironment", editing_sketch=False, assembly=False)
 
 LINE = Tool("Line", "line")
 CIRCLE = Context("Circle", default="CircleA", items=[Tool("CircleA", "a"), Tool("CircleB", "b")])
@@ -247,7 +248,7 @@ class YourScenarioTest(unittest.TestCase):
         self.assertIs(navigator.context, contexts.SKETCH)
 
         # Create shows line, rectangle, circle, …; Circle starts a circle and shows the circle types.
-        open_path(navigator, contexts.CREATE, contexts.CIRCLE)
+        open_path(navigator, contexts.SKETCH_CREATE, contexts.CIRCLE)
         self.assertEqual(fusion.started, ["CircleCenterRadius"])
         navigator.command_started("CircleCenterRadius")
         self.assertIs(navigator.context, contexts.CIRCLE)
@@ -261,14 +262,14 @@ class YourScenarioTest(unittest.TestCase):
 
         # Drawing the circle returns to the list of things to create.
         navigator.shape_drawn()
-        self.assertEqual((navigator.context, navigator.page), (contexts.CREATE, 0))
+        self.assertEqual((navigator.context, navigator.page), (contexts.SKETCH_CREATE, 0))
 
         # Esc in Fusion: no longer creating, so back to the sketch context.
         navigator.command_ended("CircleThreePoint", replaced=False)
         self.assertIs(navigator.context, contexts.SKETCH)
 
-        # Starting a constraint with the mouse switches to the constraints, on Tangent's page.
-        navigator.command_started("ConstraintTangent")
+        # Starting a constraint with the mouse switches to the constraints, on Parallel's page.
+        navigator.command_started("ConstraintParallel")
         self.assertEqual((navigator.context, navigator.page), (contexts.CONSTRAINTS, 1))
 
         # Back returns to the sketch context and ends the constraint tool.
@@ -277,21 +278,29 @@ class YourScenarioTest(unittest.TestCase):
 
     def test_back_from_a_second_page_context_returns_to_that_page(self):
         navigator, _ = make(contexts.ROOTS)
-        navigator.press(contexts.CREATE)
+        navigator.press(contexts.SKETCH_CREATE)
         navigator.press(Nav.MORE)
-        navigator.press(contexts.TEXT)
-        navigator.command_started("MTextCmd")
+        navigator.press(contexts.POLYGON)
+        navigator.command_started("ShapePolygonCircumscribed")
         navigator.press(Nav.BACK)
-        self.assertEqual((navigator.context, navigator.page), (contexts.CREATE, 1))
+        self.assertEqual((navigator.context, navigator.page), (contexts.SKETCH_CREATE, 1))
 
-    def test_a_new_sketch_from_the_design_keys(self):
+    def test_a_new_sketch_from_the_part_keys(self):
         navigator, fusion = make(contexts.ROOTS, fusion_state=DESIGNING)
-        navigator.press(contexts.DESIGN.items[0])
+        navigator.press(contexts.PART.items[0])
         navigator.command_started("SketchCreate")
         navigator.command_ended("SketchCreate", replaced=False)
         navigator.fusion_changed(SKETCHING)
         self.assertEqual(fusion.started, ["SketchCreate"])
         self.assertIs(navigator.context, contexts.SKETCH)
+
+    def test_section_analysis_shows_on_the_part_or_the_assembly_keys(self):
+        cases = [(DESIGNING, contexts.PART), (SKETCHING, contexts.PART), (ASSEMBLING, contexts.ASSEMBLY)]
+        for fusion_state, root in cases:
+            with self.subTest(fusion=fusion_state):
+                navigator, _ = make(contexts.ROOTS, fusion_state=fusion_state)
+                navigator.command_started("FusionHalfSectionViewCommand")
+                self.assertEqual((navigator.context, navigator.running), (root, "FusionHalfSectionViewCommand"))
 
 
 if __name__ == "__main__":

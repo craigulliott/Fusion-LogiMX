@@ -25,9 +25,9 @@ class LookupTest(unittest.TestCase):
         self.registry = Registry(roots)
 
     def test_the_first_root_whose_condition_holds_is_the_top_level(self):
-        self.assertIs(self.registry.root_for(FusionState("Design", editing_sketch=True)), self.sketch)
-        self.assertIs(self.registry.root_for(FusionState("Design", editing_sketch=False)), self.design)
-        self.assertIsNone(self.registry.root_for(FusionState("Render", editing_sketch=False)))
+        self.assertIs(self.registry.root_for(FusionState("Design", editing_sketch=True, assembly=False)), self.sketch)
+        self.assertIs(self.registry.root_for(FusionState("Design", editing_sketch=False, assembly=False)), self.design)
+        self.assertIsNone(self.registry.root_for(FusionState("Render", editing_sketch=False, assembly=False)))
 
     def test_a_command_s_home_is_the_context_holding_its_key(self):
         self.assertIs(self.registry.home("C2"), self.circle)
@@ -57,22 +57,49 @@ class LookupTest(unittest.TestCase):
         self.assertIsNone(self.sketch.icon_source)
 
 
+class KeyInEachRootTest(unittest.TestCase):
+    """A command may have a key in each root; where the user is picks the one that counts."""
+
+    def setUp(self):
+        self.sketch = Context("Sketch", items=[Tool("L", "line")])
+        self.assembly = Context("Assembly", items=[Tool("SEC", "section")])
+        self.part = Context("Part", items=[Tool("SEC", "section")])
+        self.registry = Registry([
+            Root(self.sketch, when=lambda fusion: fusion.editing_sketch),
+            Root(self.assembly, when=lambda fusion: fusion.assembly),
+            Root(self.part, when=lambda fusion: not fusion.assembly),
+        ])
+
+    def test_the_first_root_that_applies_and_has_a_key_holds_the_home(self):
+        part = FusionState("Design", editing_sketch=False, assembly=False)
+        sketching_in_a_part = FusionState("Design", editing_sketch=True, assembly=False)
+        assembly = FusionState("Design", editing_sketch=False, assembly=True)
+        self.assertIs(self.registry.home("SEC", part), self.part)
+        self.assertIs(self.registry.home("SEC", sketching_in_a_part), self.part)
+        self.assertIs(self.registry.home("SEC", assembly), self.assembly)
+
+    def test_otherwise_the_first_root_with_a_key_holds_the_home(self):
+        self.assertIs(self.registry.home("L", FusionState("Design", editing_sketch=False, assembly=False)), self.sketch)
+        self.assertIs(self.registry.home("SEC"), self.assembly)
+
+    def test_each_root_contains_its_own_key(self):
+        self.assertTrue(self.registry.contains(self.part, "SEC"))
+        self.assertTrue(self.registry.contains(self.assembly, "SEC"))
+        self.assertFalse(self.registry.contains(self.sketch, "SEC"))
+
+
 class ChecksTest(unittest.TestCase):
     def _build(self, *contexts):
         return Registry([Root(context, when=lambda fusion: True) for context in contexts])
 
-    def test_a_command_may_have_only_one_key(self):
-        with self.assertRaisesRegex(ValueError, "more than one key"):
+    def test_a_command_may_have_only_one_key_in_each_root(self):
+        with self.assertRaisesRegex(ValueError, "more than one key in 'Top'"):
             self._build(Context("Top", items=[Tool("A", "a"), Context("Sub", items=[Tool("A", "again")])]))
 
     def test_a_context_is_defined_once(self):
         shared = Context("Shared", items=[Tool("A", "a")])
         with self.assertRaisesRegex(ValueError, "defined more than once"):
             self._build(Context("One", items=[shared]), Context("Two", items=[shared]))
-
-    def test_context_names_are_unique(self):
-        with self.assertRaisesRegex(ValueError, "defined more than once"):
-            self._build(Context("Top", items=[Context("Same", items=[]), Context("Same", items=[])]))
 
     def test_a_default_must_be_one_of_the_context_s_own_keys(self):
         with self.assertRaisesRegex(ValueError, "not one of its keys"):

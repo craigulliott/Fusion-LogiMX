@@ -48,9 +48,11 @@ npm run link      # links dist/ into Logi Plugin Service and reloads the plugin
 
 ## How the keypad follows you
 
-- **Where you are picks the top level.** Editing a sketch shows Create, Constraints, Dimension
-  and Finish. Elsewhere in the Design workspace, it shows New Sketch. Any other workspace gives a
-  blank keypad.
+- **Where you are picks the top level.** Editing a sketch shows Create, Constraints, Dimension,
+  Construction, Centerline and Finish. Elsewhere in a part design (or a hybrid one), it shows New
+  Sketch, Create, Modify, Construct, Joint Origin, Parameters, Section Analysis and Derive; in an
+  assembly design, Insert Component, Joint and Section Analysis. Any other workspace gives a blank
+  keypad.
 - **Starting a tool, from the keypad or the mouse, shows the page with its key,** marked `▶`.
 - **A key marked `›` opens a page.** Pages for tools with variants (Circle, Arc, Slot, …) also
   start the default variant.

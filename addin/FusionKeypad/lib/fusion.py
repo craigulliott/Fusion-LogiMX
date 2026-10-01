@@ -17,13 +17,15 @@ from .log import log
 from .registry import FusionState
 
 # Fusion ships several sizes and themes of each command icon; best first. The
-# keys are black, so dark-theme artwork leads. Some newer commands (Finish
-# Sketch) ship only the SVG "weave" set. Where nothing here suits a key, the
-# `icon=` override in contexts.py picks another.
+# keys are black, so dark-theme artwork leads. Some newer commands ship their
+# best artwork only as SVG: the "weave" set (Finish Sketch) or the theme set
+# (Normal/Construction). Where nothing here suits a key, the `icon=` override
+# in contexts.py picks another.
 ICON_FILES = (
     "64x64-dark.png",
     "32x32-dark@2x.png",
     "32x32-weave_dark.svg",
+    "32x32-dark_gray.svg",
     "64x64.png",
     "32x32@2x.png",
     "32x32.png",
@@ -51,6 +53,7 @@ class Fusion:
         return FusionState(
             workspace=_safe(lambda: self._ui.activeWorkspace.id),
             editing_sketch=self._active_sketch() is not None,
+            assembly=self._designing_assembly(),
         )
 
     def sketch_curve_count(self) -> int | None:
@@ -60,6 +63,14 @@ class Fusion:
 
     def _active_sketch(self):
         return _safe(lambda: adsk.fusion.Sketch.cast(self._app.activeEditObject))
+
+    def _designing_assembly(self) -> bool:
+        """Whether the active design's intent is Assembly. The workspace is the same for every intent."""
+        return _safe(
+            lambda: adsk.fusion.Design.cast(self._app.activeProduct).designIntent
+            == adsk.fusion.DesignIntentTypes.AssemblyDesignIntentType,
+            False,
+        )
 
     # Commands (the navigator's Commands interface) --------------------------
 

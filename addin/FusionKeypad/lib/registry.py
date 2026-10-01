@@ -20,6 +20,7 @@ class FusionState:
 
     workspace: str | None
     editing_sketch: bool
+    assembly: bool  # the active design's intent is Assembly (not Part or Hybrid)
 
 
 @dataclass(frozen=True)
@@ -67,34 +68,39 @@ class Registry:
     def __init__(self, roots: Sequence[Root]):
         self.roots = list(roots)
         self._parents: dict[Context, Context | None] = {}
-        self._homes: dict[str, Context] = {}
-        self._names: set[str] = set()
+        self._homes: dict[str, dict[Context, Context]] = {}  # command → {root: the context holding its key}
         for root in self.roots:
-            self._add(root.context, parent=None)
+            self._add(root.context, parent=None, root=root.context)
 
-    def _add(self, context: Context, parent: Context | None) -> None:
-        if context in self._parents or context.name in self._names:
+    def _add(self, context: Context, parent: Context | None, root: Context) -> None:
+        if context in self._parents:
             raise ValueError(f"context {context.name!r} is defined more than once")
         self._parents[context] = parent
-        self._names.add(context.name)
         for item in context.items:
             if isinstance(item, Context):
-                self._add(item, parent=context)
-            elif item.command in self._homes:
-                # A command's key must have one home, so a running tool always has one place to show.
-                raise ValueError(f"command {item.command!r} has more than one key")
+                self._add(item, parent=context, root=root)
+            elif root in self._homes.get(item.command, {}):
+                # A command's key must have one home per root, so a running tool always has one place to show.
+                raise ValueError(f"command {item.command!r} has more than one key in {root.name!r}")
             else:
-                self._homes[item.command] = context
-        if context.default is not None and self._homes.get(context.default) is not context:
+                self._homes.setdefault(item.command, {})[root] = context
+        if context.default is not None and self._homes.get(context.default, {}).get(root) is not context:
             raise ValueError(f"context {context.name!r} defaults to {context.default!r}, which is not one of its keys")
 
     def root_for(self, fusion: FusionState) -> Context | None:
         """The top-level context for where the user is, or None for a blank keypad."""
         return next((root.context for root in self.roots if root.when(fusion)), None)
 
-    def home(self, command: str) -> Context | None:
-        """The context holding the command's key, or None if it has no key."""
-        return self._homes.get(command)
+    def home(self, command: str, fusion: FusionState | None = None) -> Context | None:
+        """The context holding the command's key, or None if it has no key.
+
+        A command may have a key in each root. The first root that applies to where the user is
+        and has one wins; failing that, the first root that has one (a sketch tool started
+        outside a sketch, say).
+        """
+        homes = self._homes.get(command, {})
+        applying = [root.context for root in self.roots if fusion is not None and root.when(fusion)]
+        return next((homes[root] for root in applying if root in homes), next(iter(homes.values()), None))
 
     def parent(self, context: Context) -> Context | None:
         return self._parents[context]
@@ -105,12 +111,12 @@ class Registry:
         return context
 
     def contains(self, context: Context, command: str) -> bool:
-        """Whether the command's key is in this context or in any context below it."""
-        home = self._homes.get(command)
-        while home is not None:
-            if home is context:
-                return True
-            home = self._parents[home]
+        """Whether one of the command's keys is in this context or in any context below it."""
+        for home in self._homes.get(command, {}).values():
+            while home is not None:
+                if home is context:
+                    return True
+                home = self._parents[home]
         return False
 
     def commands(self) -> list[str]:

@@ -17,7 +17,7 @@ docs/protocol.md for the message format between the two halves.
   `tracker` (events and the poll → navigator), `link` (socket ↔ main thread) and
   `lifecycle` (wiring) are thin.
 - **The keypad definition is data.** All pages and keys live in `lib/contexts.py`.
-  Each command has exactly one key, so a running tool has one home; `Registry` enforces
+  Each command has at most one key per root, so a running tool has one home; `Registry` enforces
   it along with the other definition rules.
 
 ## Conventions
