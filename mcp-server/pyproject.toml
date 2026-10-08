@@ -1,0 +1,6 @@
+[project]
+name = "fusion-keypad-mcp"
+version = "0.1.0"
+description = "An MCP server that starts the Fusion tool the user names, through the Fusion Keypad add-in."
+requires-python = ">=3.11"
+dependencies = ["mcp>=2.3,<3"]

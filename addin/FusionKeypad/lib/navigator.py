@@ -54,6 +54,11 @@ class Navigator:
         self.page = 0
         self.running: str | None = None  # the running tool's command, if it has a key
 
+    @property
+    def running_key(self) -> Tool | None:
+        """The running tool's key: the one marked ▶."""
+        return self._registry.key(self.running, self._fusion) if self.running is not None else None
+
     # What the keys are ------------------------------------------------------
 
     def slots(self) -> list[Target | None]:

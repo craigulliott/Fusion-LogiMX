@@ -15,6 +15,7 @@ BACK_LABEL = "‹ Back"
 MORE_LABEL = "More ›"
 RUNNING_MARK = "▶ "  # the running tool, and the context keys leading to it
 OPENS_MARK = " ›"  # a key that opens another page
+KEY_BACKGROUND = "dark"  # the keys are black, so they take artwork made for a dark background
 
 
 @dataclass(frozen=True)
@@ -25,7 +26,7 @@ class Face:
 
 BLANK = Face("", None)
 
-IconLookup = Callable[[str], str | None]
+IconLookup = Callable[[str, str], str | None]  # (source, background) → base64 image
 
 
 def faces(slots: list[Target | None], running: str | None, registry: Registry, icon: IconLookup) -> list[Face]:
@@ -41,6 +42,7 @@ def _face(target: Target | None, running: str | None, registry: Registry, icon: 
         return Face(MORE_LABEL, None)
     if isinstance(target, Tool):
         mark = RUNNING_MARK if target.command == running else ""
-        return Face(mark + target.label, icon(target.icon_source))
+        return Face(mark + target.label, icon(target.icon_source, KEY_BACKGROUND))
     mark = RUNNING_MARK if running is not None and registry.contains(target, running) else ""
-    return Face(mark + target.name + OPENS_MARK, icon(target.icon_source) if target.icon_source else None)
+    image = icon(target.icon_source, KEY_BACKGROUND) if target.icon_source else None
+    return Face(mark + target.name + OPENS_MARK, image)

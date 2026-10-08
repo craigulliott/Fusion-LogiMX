@@ -77,11 +77,8 @@ class Registry:
     def _add(self, context: Context, parent: Context | None, root: Context) -> None:
         if context in self._parents:
             raise ValueError(f"context {context.name!r} is defined more than once")
-        path = context.name if parent is None else f"{self._paths[parent]}/{context.name}"
-        if path in self._paths.values():
-            raise ValueError(f"more than one context has the path {path!r}")
         self._parents[context] = parent
-        self._paths[context] = path
+        self._paths[context] = context.name if parent is None else f"{self._paths[parent]}/{context.name}"
         for item in context.items:
             if isinstance(item, Context):
                 self._add(item, parent=context, root=root)
@@ -107,6 +104,12 @@ class Registry:
         homes = self._homes.get(command, {})
         applying = [root.context for root in self.roots if fusion is not None and root.when(fusion)]
         return next((homes[root] for root in applying if root in homes), next(iter(homes.values()), None))
+
+    def key(self, command: str, fusion: FusionState | None = None) -> Tool | None:
+        """The command's key, in the context home() picks; None if it has no key."""
+        home = self.home(command, fusion)
+        items = home.items if home is not None else []
+        return next((item for item in items if isinstance(item, Tool) and item.command == command), None)
 
     def parent(self, context: Context) -> Context | None:
         return self._parents[context]

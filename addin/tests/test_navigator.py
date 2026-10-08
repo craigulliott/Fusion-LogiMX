@@ -112,6 +112,12 @@ class Rule2ToolStartsTest(unittest.TestCase):
         navigator.command_started("CircleB")
         self.assertEqual((navigator.context, navigator.running), (CIRCLE, "CircleB"))
 
+    def test_its_key_is_the_running_key(self):
+        navigator, _ = make()
+        self.assertIsNone(navigator.running_key)
+        navigator.command_started("CircleB")
+        self.assertIs(navigator.running_key, CIRCLE.items[1])
+
     def test_shows_the_page_with_the_key(self):
         navigator, _ = make()
         navigator.command_started("Many9")

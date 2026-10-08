@@ -1,22 +1,21 @@
 # Fusion Keypad — working notes
 
 A Fusion add-in (Python, `addin/`) drives a Logitech MX Keypad through a thin Logi
-plugin (Node.js/TypeScript, `plugin/`). See README.md for setup and use, and
-docs/keypad-protocol.md for the message format between the two halves. Other apps
-follow the add-in and start tools through it over docs/app-protocol.md.
+plugin (Node.js/TypeScript, `plugin/`), and lets an LLM start Fusion's tools through
+a thin local MCP server (Python, `mcp-server/`). See README.md for setup and use, and
+docs/protocol.md for the messages between the add-in and its two clients.
 
 ## Architecture rules
 
-- **The add-in decides; the plugin draws.** The plugin knows nothing about Fusion: it
-  shows the nine faces it is sent and reports presses by slot. New tools or pages never
-  need a plugin change.
-- **Apps follow and ask.** An app gets the keypad definition and the add-in's current
-  context, and can only ask Fusion to start a keyed command. It talks to the add-in, never
-  to the plugin or the keypad.
-- **Fusion's events are the single source of truth.** A key press or an app's `run` only
-  asks Fusion to act (start a command, cancel the tool). The keypad moves when Fusion
-  reports the result (commandStarting/commandTerminated), never optimistically.
-- **Pure core, thin edges.** `registry`, `contexts`, `navigator`, `layout` and `apps` never
+- **The add-in decides; its clients relay.** Neither client knows anything about Fusion.
+  The plugin shows the nine faces it is sent and reports presses by slot. The MCP server
+  offers the choices it is sent as one tool, asks the add-in to `run` the one picked, and
+  hands back the icon it was sent. New tools or pages never need a plugin or server change.
+- **Fusion's events are the single source of truth.** A key press or the MCP server's `run`
+  only asks Fusion to act (start a command, cancel the tool). The keypad moves, and the
+  server reports a start, when Fusion reports the result (commandStarting/commandTerminated),
+  never optimistically.
+- **Pure core, thin edges.** `registry`, `contexts`, `navigator`, `layout` and `menu` never
   import `adsk` and carry the logic and its tests. `fusion` (every Fusion read and action),
   `tracker` (events and the poll → navigator), `link` (sockets ↔ main thread) and
   `lifecycle` (wiring) are thin.
@@ -26,20 +25,27 @@ follow the add-in and start tools through it over docs/app-protocol.md.
 
 ## Conventions
 
-- **Python:**
+- **Python, in both the add-in and the MCP server:**
+  - ruff with the explicit E4/E7/E9/F set (the root `ruff.toml`);
+  - `unittest` with hand-written fakes, no mocking framework.
+- **The add-in:**
   - a thin entry file, logic in `lib/`;
   - imports within the add-in are relative (`from .lib import …`), and nothing touches
     `sys.path`. Fusion loads the add-in folder as a package and runs every add-in in one
     interpreter, so an absolute `from lib import …` picks up whichever add-in's `lib` loaded
     first. `tests/test_entry.py` guards this;
   - every Fusion accessor guarded, and handler exceptions logged, never raised;
-  - standard library only, `.py` source only;
-  - ruff with the explicit E4/E7/E9/F set;
-  - `unittest` with hand-written fakes, no mocking framework.
+  - standard library only (it runs in Fusion's Python), `.py` source only.
 - **Event handlers** are only attached through `events.subscribe` / `events.register_custom_event`,
   which keep them referenced (a garbage-collected handler crashes Fusion silently on its next callback).
 - **Worker threads never touch the Fusion API.** They only call `fireCustomEvent`, and the
   handler does the work on the main thread.
+- **The MCP server:**
+  - the `mcp` SDK's low-level `Server` (v2), run with uv and pinned by `uv.lock`;
+  - stdout carries MCP, so nothing prints: it logs to `~/Library/Logs/FusionKeypad-mcp.log`;
+  - a failed call is an `is_error` result the model can read, never an exception (v2 turns
+    those into protocol errors);
+  - `tool` and `start` are tested with a fake link; `appearance()` and `serve()` are thin edges.
 - **TypeScript:**
   - strict `tsc` for type checking only;
   - esbuild bundles, and `node --test` runs the tests by stripping types, so imports use `.ts`
@@ -92,6 +98,13 @@ follow the add-in and start tools through it over docs/app-protocol.md.
 - **The physical page buttons** belong to Options+; a plugin can't intercept them outside a
   dynamic folder. Hence the on-screen More key.
 
+**Icons and the MCP SDK (checked 2026-10-08):**
+- Fusion ships each command icon for a dark and a light background: `64x64-dark.png` and
+  `64x64.png`, `dark_gray` and `light_gray` SVGs, and for the newest commands only
+  `weave_dark` and `weave_light` SVGs.
+- `mcp` 2.3.0 serves both the initialize handshake (2024-11-05 to 2025-11-25) and the
+  stateless 2026-07-28 protocol over stdio; both kinds of client were tried.
+
 ## Layout
 
 ```
@@ -101,14 +114,16 @@ addin/FusionKeypad/          the folder linked into Fusion's AddIns
   lib/registry.py            Tool/Context/Root + lookups and definition checks
   lib/navigator.py           the rules that move the keypad
   lib/layout.py              key faces (labels, marks, icons)
-  lib/apps.py                what apps are told (definition, state)
+  lib/menu.py                the MCP server's choices (by name, nearest first)
   lib/fusion.py              every Fusion read and action
   lib/tracker.py             Fusion events + sketch poll → navigator
-  lib/link.py                localhost sockets (keypad, apps), messages → main thread
+  lib/link.py                localhost links (plugin, MCP server), messages → main thread
   lib/lifecycle.py           wiring, start/stop
 addin/tests/                 unittest; stubs/adsk is a minimal stand-in
 plugin/index.ts, src/        the Logi plugin
-docs/keypad-protocol.md      plugin ⇄ add-in messages
-docs/app-protocol.md         app ⇄ add-in messages
-examples/app_client.py       an example app
+mcp-server/server.py         the MCP server: its tool, starting it, stdio
+mcp-server/addin_link.py     the connection to the add-in
+mcp-server/tests/            unittest
+docs/protocol.md             add-in ⇄ plugin and add-in ⇄ MCP server messages
+ruff.toml                    lint rules for all the Python
 ```

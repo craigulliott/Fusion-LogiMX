@@ -6,19 +6,21 @@ and the keys offer Create and Constraints; tap Circle and they show the circle
 types; draw the circle and they return to the Create list; start a constraint
 with the mouse and they switch to the constraints.
 
-It has two halves in this repository:
+It has three parts in this repository:
 
 | | What it does |
 |---|---|
 | [`addin/`](addin/) | A Fusion add-in in Python. It decides everything: which keys to show, what they do, and how the keypad follows Fusion. |
 | [`plugin/`](plugin/) | A small Logitech plugin in Node.js/TypeScript. It draws whatever the add-in sends on the keys and reports presses back. |
+| [`mcp-server/`](mcp-server/) | An optional MCP server in Python. It lets an LLM, in a dictation app say, start the Fusion tool you name. |
 
 ```
-Fusion events ──▶ add-in ──(localhost, docs/keypad-protocol.md)──▶ plugin ──▶ Logi Plugin Service ──▶ keypad
-Fusion tools  ◀── add-in ◀────────────── key presses ◀──────────── plugin ◀────────────────────────── keypad
+Fusion events ──▶ add-in ──(localhost, docs/protocol.md)──▶ plugin ──▶ Logi Plugin Service ──▶ keypad
+Fusion tools  ◀── add-in ◀────────── key presses ◀───────── plugin ◀────────────────────────── keypad
+Fusion tools  ◀── add-in ◀──(localhost, docs/protocol.md)── MCP server ◀──(MCP over stdio)── dictation app
 ```
 
-Other apps can follow the add-in and start Fusion tools through it too: see [Apps](#apps).
+You can also start tools by voice: see [Voice and LLM control](#voice-and-llm-control).
 
 ## Setup
 
@@ -79,38 +81,67 @@ the top of the file.
 - **Icons** come from Fusion automatically. To use a different one, add `icon=` with another
   command's ID, or with a `.png`/`.svg` file placed in `addin/FusionKeypad/icons/`.
 
-After editing, restart the add-in (`Shift+S` → Stop, then Run). The plugin never needs changing
-to add tools.
+After editing, restart the add-in (`Shift+S` → Stop, then Run). Neither the plugin nor the MCP
+server needs changing to add tools.
 
-## Apps
+## Voice and LLM control
 
-Other programs on the same Mac can follow the add-in and start Fusion tools through it, with or
-without a keypad. They get every page and key, with the folder of each command's Fusion icons,
-and the add-in's current context, and they can ask Fusion to start any tool that has a key.
-The messages are in [`docs/app-protocol.md`](docs/app-protocol.md), and
-[`examples/app_client.py`](examples/app_client.py) is a working example:
+[`mcp-server/`](mcp-server/) is a local MCP server, so an LLM (in a dictation app, say) can start
+the Fusion tool you name: "coincident", "tangent", "line".
+
+- **It offers one tool, `start_tool`.** Its names are the tools on the keypad for where you are in
+  Fusion, nearest first, so adding a tool to `contexts.py` adds it here too.
+- **Starting a tool works like clicking it.** The keypad follows, and the call returns once Fusion
+  reports the tool running.
+- **The result shows the tool's icon,** in the artwork for the Mac's current Light or Dark
+  appearance, marked for the user rather than the model.
+
+It can't enter values ("extrude 10 mm") or cancel a tool. Fusion's own MCP server (turned on in
+Fusion's preferences) is a different thing: it runs Python an LLM writes, and doesn't know where
+you are.
+
+**Setup.** You need [uv](https://docs.astral.sh/uv/).
 
 ```sh
-python3 examples/app_client.py                        # print the keys of each context the add-in moves to
-python3 examples/app_client.py run ConstraintTangent  # start a tool, then do the same
+cd mcp-server
+uv sync
 ```
+
+Then add the server to your MCP host, such as your dictation app. Give absolute paths, because apps
+started from the Dock don't get your shell's `PATH` (`which uv` shows where uv is):
+
+```json
+{"command": "/opt/homebrew/bin/uv", "args": ["run", "--directory", "/path/to/Fusion-LogiMX/mcp-server", "server.py"]}
+```
+
+**What the host should do:**
+- **List the tools at the start of each dictation.** The list follows Fusion and is never fresh for
+  long. While Fusion or the add-in isn't running, or outside the Design workspace, there are none.
+- **Allow at least 6 s for a call.** A tool usually starts within about 50 ms, but Fusion can be busy
+  for up to 5 s.
+- **Never retry a call.** "Fusion is busy and will start it" means the tool is on its way.
+- **Show image content marked for the user.**
 
 ## Development
 
 ```sh
-cd addin/tests && python3 -m unittest discover   # add-in tests (no Fusion needed)
-cd addin && uvx ruff check .                      # add-in lint
-cd plugin && npm test                             # plugin tests
-cd plugin && npm run build                        # type check + bundle
-cd plugin && npm run watch                        # rebuild and reload the plugin on every save
+cd addin/tests && python3 -m unittest discover             # add-in tests (no Fusion needed)
+cd mcp-server && uv run python -m unittest discover tests   # MCP server tests
+uvx ruff check .                                            # lint all the Python
+cd plugin && npm test                                       # plugin tests
+cd plugin && npm run build                                  # type check + bundle
+cd plugin && npm run watch                                  # rebuild and reload the plugin on every save
+npx @modelcontextprotocol/inspector uv run --directory mcp-server server.py   # try the MCP server
 ```
 
 `fusion.py` and `tracker.py` are thin adapters over Fusion's API and are checked in Fusion
-itself; everything else is covered by the tests above.
+itself, as is the MCP server's wiring, through the Inspector. Everything else is covered by the
+tests above.
 
 Logs:
 - `~/Library/Logs/FusionKeypad-addin.log`
 - `~/Library/Logs/FusionKeypad-plugin.log` (`npm run log` follows it)
+- `~/Library/Logs/FusionKeypad-mcp.log`
 
 ## Troubleshooting
 

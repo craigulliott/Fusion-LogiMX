@@ -6,6 +6,7 @@ plugin/dist/
 __pycache__/
 *.pyc
 .ruff_cache/
+.venv/
 
 # macOS
 .DS_Store

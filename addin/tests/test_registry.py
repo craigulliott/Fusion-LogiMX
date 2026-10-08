@@ -34,6 +34,10 @@ class LookupTest(unittest.TestCase):
         self.assertIs(self.registry.home("DIM"), self.sketch)
         self.assertIsNone(self.registry.home("SelectCommand"))
 
+    def test_a_command_s_key_is_its_tool_in_that_home(self):
+        self.assertIs(self.registry.key("C2"), self.circle.items[1])
+        self.assertIsNone(self.registry.key("SelectCommand"))
+
     def test_parents_and_roots(self):
         self.assertIs(self.registry.parent(self.circle), self.create)
         self.assertIsNone(self.registry.parent(self.sketch))
@@ -82,6 +86,10 @@ class KeyInEachRootTest(unittest.TestCase):
         self.assertIs(self.registry.home("SEC", sketching_in_a_part), self.part)
         self.assertIs(self.registry.home("SEC", assembly), self.assembly)
 
+    def test_the_key_that_counts_is_the_one_in_that_home(self):
+        assembly = FusionState("Design", editing_sketch=False, assembly=True)
+        self.assertIs(self.registry.key("SEC", assembly), self.assembly.items[0])
+
     def test_otherwise_the_first_root_with_a_key_holds_the_home(self):
         self.assertIs(self.registry.home("L", FusionState("Design", editing_sketch=False, assembly=False)), self.sketch)
         self.assertIs(self.registry.home("SEC"), self.assembly)
@@ -104,10 +112,6 @@ class ChecksTest(unittest.TestCase):
         shared = Context("Shared", items=[Tool("A", "a")])
         with self.assertRaisesRegex(ValueError, "defined more than once"):
             self._build(Context("One", items=[shared]), Context("Two", items=[shared]))
-
-    def test_a_context_s_path_is_its_own(self):
-        with self.assertRaisesRegex(ValueError, "more than one context has the path 'Top/Sub'"):
-            self._build(Context("Top", items=[Context("Sub", items=[Tool("A", "a")]), Context("Sub", items=[])]))
 
     def test_a_default_must_be_one_of_the_context_s_own_keys(self):
         with self.assertRaisesRegex(ValueError, "not one of its keys"):

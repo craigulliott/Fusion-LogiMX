@@ -16,8 +16,8 @@ TOP = Context("Top", items=[LINE, MARKED, CIRCLE, PLAIN])
 REGISTRY = Registry([Root(TOP, when=lambda fusion: True)])
 
 
-def icon(source):
-    return f"<{source}>"
+def icon(source, background):
+    return f"<{source} on {background}>"
 
 
 class FacesTest(unittest.TestCase):
@@ -27,18 +27,24 @@ class FacesTest(unittest.TestCase):
             [Face("‹ Back", None), Face("", None), Face("More ›", None)],
         )
 
-    def test_a_tool_key_shows_its_label_and_icon(self):
-        self.assertEqual(faces([LINE, MARKED], None, REGISTRY, icon), [Face("Line", "<L>"), Face("Mark", "<mark.png>")])
+    def test_a_tool_key_shows_its_label_and_its_icon_for_a_dark_background(self):
+        self.assertEqual(
+            faces([LINE, MARKED], None, REGISTRY, icon),
+            [Face("Line", "<L on dark>"), Face("Mark", "<mark.png on dark>")],
+        )
 
     def test_a_context_key_says_it_opens_a_page(self):
-        self.assertEqual(faces([CIRCLE, PLAIN], None, REGISTRY, icon), [Face("Circle ›", "<C1>"), Face("Plain ›", None)])
+        self.assertEqual(
+            faces([CIRCLE, PLAIN], None, REGISTRY, icon),
+            [Face("Circle ›", "<C1 on dark>"), Face("Plain ›", None)],
+        )
 
     def test_the_running_tool_and_the_context_leading_to_it_are_marked(self):
         self.assertEqual(
             faces([LINE, CIRCLE, PLAIN], "C2", REGISTRY, icon),
-            [Face("Line", "<L>"), Face("▶ Circle ›", "<C1>"), Face("Plain ›", None)],
+            [Face("Line", "<L on dark>"), Face("▶ Circle ›", "<C1 on dark>"), Face("Plain ›", None)],
         )
-        self.assertEqual(faces([LINE], "L", REGISTRY, icon), [Face("▶ Line", "<L>")])
+        self.assertEqual(faces([LINE], "L", REGISTRY, icon), [Face("▶ Line", "<L on dark>")])
 
 
 if __name__ == "__main__":

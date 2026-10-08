@@ -16,20 +16,29 @@ import adsk.fusion
 from .log import log
 from .registry import FusionState
 
-# Fusion ships several sizes and themes of each command icon; best first. The
-# keys are black, so dark-theme artwork leads. Some newer commands ship their
-# best artwork only as SVG: the "weave" set (Finish Sketch) or the theme set
-# (Normal/Construction). Where nothing here suits a key, the `icon=` override
-# in contexts.py picks another.
-ICON_FILES = (
-    "64x64-dark.png",
-    "32x32-dark@2x.png",
-    "32x32-weave_dark.svg",
-    "32x32-dark_gray.svg",
-    "64x64.png",
-    "32x32@2x.png",
-    "32x32.png",
-)
+# Fusion ships each command icon in several sizes and themes. These are the
+# files that suit a dark or a light background, best first. Some newer commands
+# ship their best artwork only as SVG: the "weave" set (Finish Sketch) or the
+# theme set (Normal/Construction). Where nothing here suits, the `icon=`
+# override in contexts.py picks another.
+ICON_FILES = {
+    "dark": (
+        "64x64-dark.png",
+        "32x32-dark@2x.png",
+        "32x32-weave_dark.svg",
+        "32x32-dark_gray.svg",
+        "64x64.png",  # for commands without dark artwork
+        "32x32@2x.png",
+        "32x32.png",
+    ),
+    "light": (
+        "64x64.png",
+        "32x32@2x.png",
+        "32x32-weave_light.svg",
+        "32x32-light_gray.svg",
+        "32x32.png",
+    ),
+}
 ICON_FILE_SUFFIXES = (".png", ".svg")
 
 
@@ -45,7 +54,7 @@ class Fusion:
         self._app = app
         self._ui = app.userInterface
         self._icons_dir = icons_dir
-        self._icons: dict[str, str | None] = {}
+        self._icons: dict[tuple[str, str], str | None] = {}  # (source, background) → image
 
     # Where the user is ------------------------------------------------------
 
@@ -85,10 +94,8 @@ class Fusion:
         """Ends the running tool. Fusion reports it as Completed, exactly like Esc."""
         self._ui.terminateActiveCommand()
 
-    def missing_commands(self, commands: list[str]) -> list[str]:
-        return [command for command in commands if self._definition(command) is None]
-
     def command_name(self, command: str) -> str | None:
+        """Fusion's name for a command; None if this Fusion build has no such command."""
         return _safe(lambda: self._definition(command).name)
 
     def _definition(self, command: str):
@@ -96,24 +103,24 @@ class Fusion:
 
     # Icons ------------------------------------------------------------------
 
-    def icon(self, source: str) -> str | None:
-        """A key image, base64: a .png/.svg file from icons/, or a command's own icon."""
-        if source not in self._icons:
-            path = self._icon_path(source)
+    def icon(self, source: str, background: str) -> str | None:
+        """A base64 image for a "dark" or "light" background: a .png/.svg file from icons/, or a command's own."""
+        if (source, background) not in self._icons:
+            path = self._icon_path(source, background)
             if path is None:
-                log("WARN", f"no icon found for {source!r}")
-            self._icons[source] = base64.b64encode(path.read_bytes()).decode("ascii") if path else None
-        return self._icons[source]
+                log("WARN", f"no icon found for {source!r} on a {background} background")
+            self._icons[source, background] = base64.b64encode(path.read_bytes()).decode("ascii") if path else None
+        return self._icons[source, background]
 
-    def icon_folder(self, command: str) -> str | None:
-        """The folder of Fusion's artwork for a command, in every size and theme; None if Fusion has no such command."""
-        return _safe(lambda: self._definition(command).resourceFolder) or None
+    def icons(self, source: str) -> dict[str, str | None]:
+        """The image for each background."""
+        return {background: self.icon(source, background) for background in ICON_FILES}
 
-    def _icon_path(self, source: str) -> Path | None:
+    def _icon_path(self, source: str, background: str) -> Path | None:
         if source.endswith(ICON_FILE_SUFFIXES):
             path = self._icons_dir / source
             return path if path.is_file() else None
-        folder = self.icon_folder(source)
-        if folder is None:
+        folder = _safe(lambda: self._definition(source).resourceFolder)
+        if not folder:
             return None
-        return next((Path(folder) / name for name in ICON_FILES if (Path(folder) / name).is_file()), None)
+        return next((Path(folder) / name for name in ICON_FILES[background] if (Path(folder) / name).is_file()), None)

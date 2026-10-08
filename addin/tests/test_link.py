@@ -1,4 +1,4 @@
-"""link.Link — clients get the latest message of each type, and every line from them is handled on the main thread."""
+"""link.Link — clients get the latest message; their lines reach the main thread unless one isn't a JSON object."""
 
 import json
 import socket
@@ -12,7 +12,6 @@ from FusionKeypad.lib import events
 from FusionKeypad.lib.link import HOST, Link
 
 TEST_PORT = 47899  # not a real port, so an add-in running in Fusion can't interfere
-DEFINITION = {"type": "definition", "roots": []}
 SKETCHING = {"type": "state", "context": "Sketch", "running": None}
 DRAWING = {"type": "state", "context": "Sketch/Create", "running": "DrawPolyline"}
 RUN = {"type": "run", "command": "DrawPolyline"}
@@ -37,10 +36,10 @@ class LinkTest(unittest.TestCase):
         self.addCleanup(client.close)
         return client
 
-    def test_a_client_gets_the_latest_message_of_each_type_on_connecting(self):
-        for message in (DEFINITION, SKETCHING, DRAWING):
+    def test_a_client_gets_the_latest_message_on_connecting(self):
+        for message in (SKETCHING, DRAWING):
             self.link.publish(message)
-        self.assertEqual(_read_lines(self.connect(), 2), [DEFINITION, DRAWING])
+        self.assertEqual(_read_lines(self.connect(), 1), [DRAWING])
 
     def test_publishes_each_message_to_every_client_as_one_json_line(self):
         self.link.publish(SKETCHING)
@@ -51,7 +50,7 @@ class LinkTest(unittest.TestCase):
         for client in clients:
             self.assertEqual(_read_lines(client, 1), [DRAWING])
 
-    def test_a_message_that_repeats_the_latest_of_its_type_is_not_sent_again(self):
+    def test_a_message_that_repeats_the_last_one_is_not_sent_again(self):
         self.link.publish(SKETCHING)
         client = self.connect()
         self.assertEqual(_read_lines(client, 1), [SKETCHING])
@@ -67,11 +66,18 @@ class LinkTest(unittest.TestCase):
         self.assertTrue(self.app.pump_until(lambda: RUN in self.received))
         self.assertEqual(self.handled_on, {threading.current_thread()})
 
-    def test_malformed_lines_are_ignored(self):
+    def test_an_http_request_is_disconnected_before_its_body_reaches_the_main_thread(self):
         client = self.connect()
-        client.sendall(b"not json\n[1, 2]\n\n" + (json.dumps(RUN) + "\n").encode())
-        self.assertTrue(self.app.pump_until(lambda: RUN in self.received))
-        self.assertEqual(self.received, [RUN])
+        body = json.dumps(RUN)
+        client.sendall(f"POST / HTTP/1.1\r\nContent-Length: {len(body)}\r\n\r\n{body}\n".encode())
+        self.assertTrue(_closed(client))
+        self.assertFalse(self.app.pump_until(lambda: self.received, timeout=0.2))
+
+    def test_any_line_that_is_not_a_json_object_disconnects_its_client(self):
+        client = self.connect()
+        client.sendall(b"[1, 2]\n" + (json.dumps(RUN) + "\n").encode())
+        self.assertTrue(_closed(client))
+        self.assertFalse(self.app.pump_until(lambda: self.received, timeout=0.2))
 
     def test_stop_closes_the_connections_frees_the_port_and_unregisters(self):
         self.link.publish(SKETCHING)
@@ -84,6 +90,14 @@ class LinkTest(unittest.TestCase):
         again.start()
         self.addCleanup(again.stop)
         self.connect()  # refused unless the new link could listen on the port
+
+
+def _closed(client: socket.socket) -> bool:
+    """Whether the link closed the connection, gracefully or with a reset."""
+    try:
+        return client.recv(1) == b""
+    except ConnectionResetError:
+        return True
 
 
 def _read_lines(client: socket.socket, count: int) -> list[dict]:
