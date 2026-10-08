@@ -16,7 +16,7 @@ export type AddinLink = {
 
 /**
  * Keeps a connection to the Fusion add-in on 127.0.0.1 (one JSON message per
- * line, see docs/protocol.md), retrying every second while nothing listens.
+ * line, see docs/keypad-protocol.md), retrying every second while nothing listens.
  */
 export function connectToAddin(port: number, handlers: Handlers): AddinLink {
   let socket: net.Socket | null = null;

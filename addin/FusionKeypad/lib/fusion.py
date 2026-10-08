@@ -88,8 +88,8 @@ class Fusion:
     def missing_commands(self, commands: list[str]) -> list[str]:
         return [command for command in commands if self._definition(command) is None]
 
-    def command_name(self, command: str) -> str:
-        return _safe(lambda: self._definition(command).name, "?")
+    def command_name(self, command: str) -> str | None:
+        return _safe(lambda: self._definition(command).name)
 
     def _definition(self, command: str):
         return _safe(lambda: self._ui.commandDefinitions.itemById(command))
@@ -105,11 +105,15 @@ class Fusion:
             self._icons[source] = base64.b64encode(path.read_bytes()).decode("ascii") if path else None
         return self._icons[source]
 
+    def icon_folder(self, command: str) -> str | None:
+        """The folder of Fusion's artwork for a command, in every size and theme; None if Fusion has no such command."""
+        return _safe(lambda: self._definition(command).resourceFolder) or None
+
     def _icon_path(self, source: str) -> Path | None:
         if source.endswith(ICON_FILE_SUFFIXES):
             path = self._icons_dir / source
             return path if path.is_file() else None
-        folder = _safe(lambda: self._definition(source).resourceFolder)
-        if not folder:
+        folder = self.icon_folder(source)
+        if folder is None:
             return None
         return next((Path(folder) / name for name in ICON_FILES if (Path(folder) / name).is_file()), None)

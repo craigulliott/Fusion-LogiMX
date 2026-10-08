@@ -14,9 +14,11 @@ It has two halves in this repository:
 | [`plugin/`](plugin/) | A small Logitech plugin in Node.js/TypeScript. It draws whatever the add-in sends on the keys and reports presses back. |
 
 ```
-Fusion events ──▶ add-in ──(localhost, docs/protocol.md)──▶ plugin ──▶ Logi Plugin Service ──▶ keypad
-Fusion tools  ◀── add-in ◀────────── key presses ◀────────── plugin ◀──────────────────────── keypad
+Fusion events ──▶ add-in ──(localhost, docs/keypad-protocol.md)──▶ plugin ──▶ Logi Plugin Service ──▶ keypad
+Fusion tools  ◀── add-in ◀────────────── key presses ◀──────────── plugin ◀────────────────────────── keypad
 ```
+
+Other apps can follow the add-in and start Fusion tools through it too: see [Apps](#apps).
 
 ## Setup
 
@@ -79,6 +81,19 @@ the top of the file.
 
 After editing, restart the add-in (`Shift+S` → Stop, then Run). The plugin never needs changing
 to add tools.
+
+## Apps
+
+Other programs on the same Mac can follow the add-in and start Fusion tools through it, with or
+without a keypad. They get every page and key, with the folder of each command's Fusion icons,
+and the add-in's current context, and they can ask Fusion to start any tool that has a key.
+The messages are in [`docs/app-protocol.md`](docs/app-protocol.md), and
+[`examples/app_client.py`](examples/app_client.py) is a working example:
+
+```sh
+python3 examples/app_client.py                        # print the keys of each context the add-in moves to
+python3 examples/app_client.py run ConstraintTangent  # start a tool, then do the same
+```
 
 ## Development
 

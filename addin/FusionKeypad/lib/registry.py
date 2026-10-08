@@ -3,7 +3,8 @@
 A Context is a page of keys. Its items are Tools (a key that starts a Fusion
 command) and child Contexts (a key that opens another page). A Context with a
 `default` is a tool with variants: opening it starts that command. A Root picks
-the top-level context from where the user is in Fusion.
+the top-level context from where the user is in Fusion. Each context is known by
+its path of names from its root, such as Sketch/Create/Circle.
 
 Pure Python: nothing here touches the Fusion API.
 """
@@ -68,6 +69,7 @@ class Registry:
     def __init__(self, roots: Sequence[Root]):
         self.roots = list(roots)
         self._parents: dict[Context, Context | None] = {}
+        self._paths: dict[Context, str] = {}
         self._homes: dict[str, dict[Context, Context]] = {}  # command → {root: the context holding its key}
         for root in self.roots:
             self._add(root.context, parent=None, root=root.context)
@@ -75,7 +77,11 @@ class Registry:
     def _add(self, context: Context, parent: Context | None, root: Context) -> None:
         if context in self._parents:
             raise ValueError(f"context {context.name!r} is defined more than once")
+        path = context.name if parent is None else f"{self._paths[parent]}/{context.name}"
+        if path in self._paths.values():
+            raise ValueError(f"more than one context has the path {path!r}")
         self._parents[context] = parent
+        self._paths[context] = path
         for item in context.items:
             if isinstance(item, Context):
                 self._add(item, parent=context, root=root)
@@ -104,6 +110,9 @@ class Registry:
 
     def parent(self, context: Context) -> Context | None:
         return self._parents[context]
+
+    def path(self, context: Context) -> str:
+        return self._paths[context]
 
     def root_of(self, context: Context) -> Context:
         while (parent := self._parents[context]) is not None:

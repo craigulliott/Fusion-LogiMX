@@ -1,5 +1,5 @@
-// Messages between this plugin and the Fusion add-in. docs/protocol.md is the
-// specification; keep the two in step.
+// Messages between this plugin and the Fusion add-in. docs/keypad-protocol.md
+// is the specification; keep the two in step.
 
 export const PORT = 47823;
 export const SLOT_COUNT = 9;

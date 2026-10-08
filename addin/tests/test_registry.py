@@ -39,6 +39,10 @@ class LookupTest(unittest.TestCase):
         self.assertIsNone(self.registry.parent(self.sketch))
         self.assertIs(self.registry.root_of(self.circle), self.sketch)
 
+    def test_a_context_s_path_names_it_from_its_root(self):
+        self.assertEqual(self.registry.path(self.circle), "Sketch/Create/Circle")
+        self.assertEqual(self.registry.path(self.design), "Design")
+
     def test_a_context_contains_the_keys_below_it_at_any_depth(self):
         self.assertTrue(self.registry.contains(self.circle, "C2"))
         self.assertTrue(self.registry.contains(self.sketch, "C2"))
@@ -100,6 +104,10 @@ class ChecksTest(unittest.TestCase):
         shared = Context("Shared", items=[Tool("A", "a")])
         with self.assertRaisesRegex(ValueError, "defined more than once"):
             self._build(Context("One", items=[shared]), Context("Two", items=[shared]))
+
+    def test_a_context_s_path_is_its_own(self):
+        with self.assertRaisesRegex(ValueError, "more than one context has the path 'Top/Sub'"):
+            self._build(Context("Top", items=[Context("Sub", items=[Tool("A", "a")]), Context("Sub", items=[])]))
 
     def test_a_default_must_be_one_of_the_context_s_own_keys(self):
         with self.assertRaisesRegex(ValueError, "not one of its keys"):

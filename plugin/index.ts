@@ -1,6 +1,6 @@
 // Fusion Keypad: a thin Logi plugin. Nine key slots show whatever the Fusion
-// add-in sends (docs/protocol.md) and report presses back; the add-in decides
-// everything else.
+// add-in sends (docs/keypad-protocol.md) and report presses back; the add-in
+// decides everything else.
 import { PluginSDK } from '@logitech/plugin-sdk';
 import { connectToAddin } from './src/addin-link.ts';
 import { installBridge } from './src/lps-bridge.ts';

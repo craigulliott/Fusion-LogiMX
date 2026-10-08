@@ -2,19 +2,23 @@
 
 A Fusion add-in (Python, `addin/`) drives a Logitech MX Keypad through a thin Logi
 plugin (Node.js/TypeScript, `plugin/`). See README.md for setup and use, and
-docs/protocol.md for the message format between the two halves.
+docs/keypad-protocol.md for the message format between the two halves. Other apps
+follow the add-in and start tools through it over docs/app-protocol.md.
 
 ## Architecture rules
 
 - **The add-in decides; the plugin draws.** The plugin knows nothing about Fusion: it
   shows the nine faces it is sent and reports presses by slot. New tools or pages never
   need a plugin change.
-- **Fusion's events are the single source of truth.** A key press only asks Fusion to
-  act (start a command, cancel the tool). The keypad moves when Fusion reports the
-  result (commandStarting/commandTerminated), never optimistically.
-- **Pure core, thin edges.** `registry`, `contexts`, `navigator` and `layout` never import
-  `adsk` and carry the logic and its tests. `fusion` (every Fusion read and action),
-  `tracker` (events and the poll → navigator), `link` (socket ↔ main thread) and
+- **Apps follow and ask.** An app gets the keypad definition and the add-in's current
+  context, and can only ask Fusion to start a keyed command. It talks to the add-in, never
+  to the plugin or the keypad.
+- **Fusion's events are the single source of truth.** A key press or an app's `run` only
+  asks Fusion to act (start a command, cancel the tool). The keypad moves when Fusion
+  reports the result (commandStarting/commandTerminated), never optimistically.
+- **Pure core, thin edges.** `registry`, `contexts`, `navigator`, `layout` and `apps` never
+  import `adsk` and carry the logic and its tests. `fusion` (every Fusion read and action),
+  `tracker` (events and the poll → navigator), `link` (sockets ↔ main thread) and
   `lifecycle` (wiring) are thin.
 - **The keypad definition is data.** All pages and keys live in `lib/contexts.py`.
   Each command has at most one key per root, so a running tool has one home; `Registry` enforces
@@ -97,11 +101,14 @@ addin/FusionKeypad/          the folder linked into Fusion's AddIns
   lib/registry.py            Tool/Context/Root + lookups and definition checks
   lib/navigator.py           the rules that move the keypad
   lib/layout.py              key faces (labels, marks, icons)
+  lib/apps.py                what apps are told (definition, state)
   lib/fusion.py              every Fusion read and action
   lib/tracker.py             Fusion events + sketch poll → navigator
-  lib/link.py                socket to the plugin, messages → main thread
+  lib/link.py                localhost sockets (keypad, apps), messages → main thread
   lib/lifecycle.py           wiring, start/stop
 addin/tests/                 unittest; stubs/adsk is a minimal stand-in
 plugin/index.ts, src/        the Logi plugin
-docs/protocol.md             plugin ⇄ add-in messages
+docs/keypad-protocol.md      plugin ⇄ add-in messages
+docs/app-protocol.md         app ⇄ add-in messages
+examples/app_client.py       an example app
 ```

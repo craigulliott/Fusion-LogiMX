@@ -1,9 +1,10 @@
-# Plugin ⇄ add-in protocol
+# Keypad protocol
 
 The Logi plugin (`plugin/`) and the Fusion add-in (`addin/`) talk over one TCP
 connection on `127.0.0.1:47823`. The add-in listens. The plugin connects, and
 retries once a second while nothing is listening. Both halves are built from
-this repository, so there is no version negotiation.
+this repository, so there is no version negotiation. Apps use a port and
+protocol of their own: see [app-protocol.md](app-protocol.md).
 
 Messages are UTF-8 JSON objects, one per line (`\n`-terminated). A malformed
 line is ignored.
